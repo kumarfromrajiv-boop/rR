@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Browser</title>
+<style>
+/* ===== Design for all 3 pages: black + blue ===== */
+:root{--bg:#04060b;--panel:#0a1220;--field:#060b15;--ink:#e8f0ff;--muted:#7f93b5;--line:#1c2d4d;--blue:#2f7bff;--blue2:#6aa5ff;--userbg:#102548;--bad:#ff6b6b;--warn:#ffb454}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+[hidden]{display:none!important}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--blue2);outline-offset:2px}
+
+/* Page 1: Welcome */
+#welcome{min-height:100%;display:grid;place-content:center;text-align:center;gap:32px;padding:24px;border-top:4px solid var(--blue)}
+h1{font-size:clamp(2.2rem,7vw,4.2rem);line-height:1.05;margin:0;letter-spacing:-.02em}
+.btn{display:inline-block;background:var(--blue);color:#fff;border:0;border-radius:10px;padding:12px 30px;font:600 1rem system-ui,sans-serif;cursor:pointer;text-decoration:none}
+.btn:hover{background:var(--blue2)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.stop{background:transparent;color:var(--bad);border:1px solid var(--bad)}
+.btn.stop:disabled{border-color:var(--line);color:var(--muted)}
+
+/* Page 2: Task */
+#task{max-width:640px;margin:0 auto;padding:24px 16px 48px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:grid;gap:16px}
+label,legend{font-weight:600}
+fieldset{border:1px solid var(--line);border-radius:10px;padding:12px;margin:0;display:grid;gap:8px}
+fieldset label{font-weight:400;display:flex;gap:10px;align-items:center}
+input[type=radio]{accent-color:var(--blue)}
+input[type=url],textarea,.bar input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--field);color:var(--ink);font:inherit}
+textarea{min-height:76px;resize:vertical}
+.hint{color:var(--muted);font-weight:400;font-size:.9rem}
+.pill{display:inline-block;padding:4px 12px;border-radius:99px;font-size:.9rem;border:1px solid var(--line);color:var(--muted)}
+.pill.live{color:var(--blue2);border-color:var(--blue)}
+.pill.busy{color:var(--warn);border-color:var(--warn)}
+.pill.no{color:var(--bad);border-color:var(--bad)}
+.err{color:var(--bad);min-height:1.4em;margin:0}
+
+/* Page 3: Chat */
+#chat{display:flex;flex-direction:column;height:100%;max-width:760px;margin:0 auto}
+#log{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:82%;padding:10px 14px;border-radius:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.user{align-self:flex-start;background:var(--userbg);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.ai{align-self:flex-end;background:var(--blue);color:#fff;border-bottom-right-radius:4px}
+.msg.step{align-self:flex-end;border:1px dashed var(--line);color:var(--muted);font-size:.9rem;padding:6px 12px}
+.bar{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);background:var(--panel)}
+.bar .btn{padding:10px 18px}
+</style></head>
+<body>
+
+<!-- Page 1: Welcome -->
+<main id="welcome">
+  <h1>Welcome to AI Browser</h1>
+  <div><a class="btn" href="#task">Start</a></div>
+</main>
+
+<!-- Page 2: Task -->
+<main id="task" hidden><div class="card">
+  <fieldset><legend>Where should the website open?</legend>
+    <label><input type="radio" name="browser" value="playwright"> Playwright</label>
+    <label><input type="radio" name="browser" value="firefox"> Firefox (APK) on the server</label>
+    <div><span id="status" class="pill" hidden></span></div>
+  </fieldset>
+  <div><label for="url">Website URL</label><input id="url" type="url" placeholder="https://example.com"></div>
+  <div><label for="job">What should be done? <span class="hint">(required)</span></label><textarea id="job"></textarea></div>
+  <div><label for="how">How should it be done? <span class="hint">(optional)</span></label><textarea id="how"></textarea></div>
+  <div><label for="steps">Step by step <span class="hint">(optional)</span></label><textarea id="steps"></textarea></div>
+  <p id="err" class="err" role="alert"></p>
+  <button id="go" class="btn" disabled>Run task</button>
+</div></main>
+
+<!-- Page 3: Chat -->
+<main id="chat" hidden>
+  <div id="log" aria-live="polite"></div>
+  <form class="bar" id="form">
+    <input id="text" placeholder="Reply to the AI…" autocomplete="off" aria-label="Reply">
+    <button class="btn" type="submit">Send</button>
+    <button class="btn stop" type="button" id="stop" disabled>Stop</button>
+  </form>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const post = (u, b) => fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b || {}) });
+
+// Page switching (#welcome, #task, #chat)
+let es = null;
+function show() {
+  const p = ['task', 'chat'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'welcome';
+  ['welcome', 'task', 'chat'].forEach(n => { $('#' + n).hidden = n !== p; });
+  if (p === 'chat' && !es) listen();
+}
+addEventListener('hashchange', show);
+
+// Task page
+const st = $('#status'), go = $('#go'), err = $('#err');
+async function check() {
+  const b = document.querySelector('input[name=browser]:checked');
+  if (!b) return;
+  st.hidden = false; st.className = 'pill'; st.textContent = 'Checking…'; go.disabled = true;
+  const r = await (await fetch('/api/check?browser=' + b.value)).json();
+  st.className = 'pill ' + (!r.exists ? 'no' : r.status === 'Live' ? 'live' : 'busy');
+  st.textContent = !r.exists ? 'Not found on server' + (r.detail ? ': ' + r.detail : '')
+    : 'Found on server · ' + r.status + (r.status === 'Busy' ? ' (one task at a time)' : '');
+  go.disabled = !(r.exists && r.status === 'Live');
+}
+document.querySelectorAll('input[name=browser]').forEach(i => i.addEventListener('change', check));
+go.addEventListener('click', async () => {
+  err.textContent = '';
+  const url = $('#url').value.trim(), task = $('#job').value.trim();
+  if (!url || !task) { err.textContent = 'Enter a URL and what should be done.'; return; }
+  const r = await post('/api/task', { url, task, how: $('#how').value.trim(), steps: $('#steps').value.trim(),
+    browser: document.querySelector('input[name=browser]:checked').value });
+  if (r.ok) { if (es) { es.close(); es = null; } $('#log').innerHTML = ''; location.hash = 'chat'; }
+  else { err.textContent = (await r.json()).error || 'Could not start.'; check(); }
+});
+
+// Chat page
+function listen() {
+  const log = $('#log'), stop = $('#stop');
+  es = new EventSource('/api/events');
+  es.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.role === 'state') { stop.disabled = !m.running; return; }
+    const d = document.createElement('div');
+    d.className = 'msg ' + m.role; d.textContent = m.text;
+    log.appendChild(d); log.scrollTop = log.scrollHeight;
+  };
+}
+$('#form').addEventListener('submit', e => {
+  e.preventDefault();
+  const t = $('#text').value.trim();
+  if (t) { post('/api/reply', { text: t }); $('#text').value = ''; }
+});
+$('#stop').addEventListener('click', () => post('/api/stop'));
+
+show();
+</script>
+</body></html>
