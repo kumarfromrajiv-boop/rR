@@ -1,11 +1,13 @@
-// Part 3: does the work on the website using the chosen browser (Part 4 Playwright or Part 5 Firefox).
-const adapters = {
-  playwright: require('./part4_playwright'),
-  firefox: require('./part5_firefox')
-};
+"""Part 3: does the work on the website using the chosen browser (Part 4 Playwright or Part 5 Firefox)."""
+import asyncio
 
-// Runs inside the page: numbers clickable elements and returns a text snapshot.
-function snapshot() {
+import part4_playwright
+import part5_firefox
+
+ADAPTERS = {"playwright": part4_playwright, "firefox": part5_firefox}
+
+# JavaScript that runs inside the page: numbers clickable elements and returns a text snapshot.
+SNAPSHOT = r"""() => {
   const out = []; let i = 0;
   document.querySelectorAll('a,button,input,textarea,select,[role=button]').forEach(e => {
     const r = e.getBoundingClientRect();
@@ -17,24 +19,55 @@ function snapshot() {
   });
   return 'URL: ' + location.href + '\nTitle: ' + document.title + '\nElements:\n' + out.join('\n') +
     '\nText:\n' + document.body.innerText.slice(0, 2500);
-}
+}"""
+SCROLL = "() => window.scrollBy(0, window.innerHeight)"
 
-const sel = id => `[data-aib="${Number(id)}"]`;
-const wait = ms => new Promise(r => setTimeout(r, ms));
 
-async function perform(job, a) {
-  if (job.stopped) throw new Error('Stopped');
-  if (!job.br) job.br = await adapters[job.browser].open();
-  const b = job.br;
-  switch (a.type) {
-    case 'goto': await b.goto(a.url); break;
-    case 'click': await b.click(sel(a.id)); break;
-    case 'type': await b.type(sel(a.id), a.text || '', !!a.enter); break;
-    case 'press': await b.press(a.key || 'Enter'); break;
-    case 'scroll': await b.evaluate(() => window.scrollBy(0, window.innerHeight)); break;
-    case 'read': break;
-    default: throw new Error('Unknown action: ' + a.type);
-  }
-  await wait(1200);
-  if (job.stopped) throw new Error('Stopped');
-  return b.evaluate(snapshot);
+def sel(i):
+    try:
+        return f'[data-aib="{int(i)}"]'
+    except (TypeError, ValueError):
+        raise RuntimeError("This action needs a numeric id from the element list.")
+
+
+async def perform(job, a):
+    """Do one step. Returns a report for Part 2: what was done + the page now."""
+    if job["stopped"]:
+        raise RuntimeError("Stopped")
+    if job["br"] is None:
+        job["br"] = await ADAPTERS[job["browser"]].open()
+    b = job["br"]
+    t = a.get("type")
+    if t == "goto":
+        await b.goto(a.get("url", ""))
+        report = f"opened {a.get('url', '')}"
+    elif t == "click":
+        await b.click(sel(a.get("id")))
+        report = f"clicked element {a.get('id')}"
+    elif t == "type":
+        await b.type(sel(a.get("id")), a.get("text", ""), bool(a.get("enter")))
+        report = f"typed in element {a.get('id')}" + (" and pressed Enter" if a.get("enter") else "")
+    elif t == "press":
+        await b.press(a.get("key", "Enter"))
+        report = f"pressed {a.get('key', 'Enter')}"
+    elif t == "scroll":
+        await b.evaluate(SCROLL)
+        report = "scrolled down"
+    elif t == "read":
+        report = "read the page"
+    else:
+        raise RuntimeError("Unknown action: " + str(t))
+    await asyncio.sleep(1.2)
+    if job["stopped"]:
+        raise RuntimeError("Stopped")
+    return {"report": report, "page": await b.evaluate(SNAPSHOT)}
+
+
+async def close(job):
+    br = job.get("br")
+    if br:
+        try:
+            await br.close()
+        except Exception:
+            pass
+        job["br"] = None
