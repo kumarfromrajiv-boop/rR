@@ -1,21 +1,33 @@
-// Part 6: checks that the chosen browser exists on the server, and whether it is Live or Busy.
-const fs = require('fs');
-const p5 = require('./part5_firefox');
+"""Part 6: checks that the chosen browser exists on the server, and whether it is Live or Busy."""
+import asyncio
+import os
 
-exports.check = async (browser, busy) => {
-  let exists = false, detail = '';
-  if (browser === 'playwright') {
-    try {
-      const { chromium } = require('playwright');
-      exists = fs.existsSync(chromium.executablePath());
-      if (!exists) detail = 'Run: npx playwright install --with-deps chromium';
-    } catch { detail = 'Playwright package is not installed.'; }
-  } else if (browser === 'firefox') {
-    const apk = fs.existsSync(p5.APK) && fs.statSync(p5.APK).size > 1e6;
-    let dev = false;
-    try { dev = /\tdevice/.test(await p5.adb('devices')); } catch {}
-    exists = apk && dev;
-    detail = !apk ? 'part5_firefox.apk is missing.' : !dev ? 'No Android device or emulator connected through adb.' : '';
-  } else detail = 'Unknown browser.';
-  return { exists, status: exists ? (busy ? 'Busy' : 'Live') : null, detail };
-};
+import part5_firefox as p5
+
+
+async def check(browser, busy):
+    exists, detail = False, ""
+    if browser == "playwright":
+        try:
+            from playwright.async_api import async_playwright
+            async with async_playwright() as p:
+                exists = os.path.exists(p.chromium.executable_path)
+            if not exists:
+                detail = "Run: playwright install --with-deps chromium"
+        except ImportError:
+            detail = "Playwright package is not installed."
+        except Exception as e:
+            detail = str(e)[:150]
+    elif browser == "firefox":
+        apk = os.path.exists(p5.APK) and os.path.getsize(p5.APK) > 1_000_000
+        dev = False
+        try:
+            dev = "\tdevice" in await asyncio.to_thread(p5.adb, "devices")
+        except Exception:
+            pass
+        exists = apk and dev
+        detail = ("" if exists else "part5_firefox.apk is missing." if not apk
+                  else "No Android device or emulator connected through adb.")
+    else:
+        detail = "Unknown browser."
+    return {"exists": exists, "status": ("Busy" if busy else "Live") if exists else None, "detail": detail}
