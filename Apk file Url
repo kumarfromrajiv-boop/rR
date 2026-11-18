@@ -4,7 +4,6 @@ https://ff-app-storage-secure-576489585687-ap-southeast-2-an.s3.ap-southeast-2.a
 # ==========================================
 
 # इस वेबसाइट का Firefox APK फाइल Amazon AWS S3 Server में मौजूद है।
-# नीचे Firefox APK से संबंधित सभी जानकारी और उनके URL दिए गए हैं।
 S3 URI s3://ff-app-storage-secure-576489585687-ap-southeast-2-an/Firefox_org.mozilla.firefox_v160.0.xapk
 Amazon Resource Name (ARN) arn:aws:s3:::ff-app-storage-secure-576489585687-ap-southeast-2-an/Firefox_org.mozilla.firefox_v160.0.xapk
 Object URL https://ff-app-storage-secure-576489585687-ap-southeast-2-an.s3.ap-southeast-2.amazonaws.com/Firefox_org.mozilla.firefox_v160.0.xapk
