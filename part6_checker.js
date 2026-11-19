@@ -19,14 +19,15 @@ async def check(browser, busy):
         except Exception as e:
             detail = str(e)[:150]
     elif browser == "firefox":
-        apk = os.path.exists(p5.APK) and os.path.getsize(p5.APK) > 1_000_000
+        app = p5.app_path()                       # part5_firefox.xapk (or .apk)
+        apk = os.path.exists(app) and os.path.getsize(app) > 1_000_000
         dev = False
         try:
             dev = "\tdevice" in await asyncio.to_thread(p5.adb, "devices")
         except Exception:
             pass
         exists = apk and dev
-        detail = ("" if exists else "part5_firefox.apk is missing." if not apk
+        detail = ("" if exists else "part5_firefox.xapk (or .apk) is missing." if not apk
                   else "No Android device or emulator connected through adb.")
     else:
         detail = "Unknown browser."
