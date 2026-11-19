@@ -1,6 +1,4 @@
 """Part 4: Playwright code (Chromium on the server)."""
-
-
 class Browser:
     def __init__(self, pw, browser, page):
         self.pw, self.browser, self.page = pw, browser, page
