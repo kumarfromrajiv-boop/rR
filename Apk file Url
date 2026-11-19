@@ -1,10 +1,1 @@
-https://ff-app-storage-secure-576489585687-ap-southeast-2-an.s3.ap-southeast-2.amazonaws.com/Firefox_org.mozilla.firefox_v160.0.xapk
-# ==========================================
-# FIREFOX APK FILE - AMAZON AWS SERVER
-# =========================================
-Object URL, Entity Tag (ETag) और File Key शामिल हैं।
-S3 URI s3://ff-app-storage-secure-576489585687-ap-southeast-2-an/Firefox_org.mozilla.firefox_v160.0.xapk
-Amazon Resource Name (ARN) arn:aws:s3:::ff-app-storage-secure-576489585687-ap-southeast-2-an/Firefox_org.mozilla.firefox_v160.0.xapk
-Object URL https://ff-app-storage-secure-576489585687-ap-southeast-2-an.s3.ap-southeast-2.amazonaws.com/Firefox_org.mozilla.firefox_v160.0.xapk
-Entity tag (Etag) 3cbcba0779d189940a3e1b093c95dcef-8
-key Firefox_org.mozilla.firefox_v160.0.xapk
+
