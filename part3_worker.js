@@ -60,6 +60,8 @@ async def perform(job, a):
     await asyncio.sleep(1.2)
     if job["stopped"]:
         raise RuntimeError("Stopped")
+    if job.get("step_no"):                            # Step by step is ON: say which step this belongs to
+        report = f"[step {job['step_no']}/{job.get('step_total')}] " + report
     return {"report": report, "page": await b.evaluate(SNAPSHOT)}
 
 
