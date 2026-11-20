@@ -32,3 +32,9 @@ async def check(browser, busy):
     else:
         detail = "Unknown browser."
     return {"exists": exists, "status": ("Busy" if busy else "Live") if exists else None, "detail": detail}
+
+
+def selection(browser: str, step_by_step: bool) -> dict:
+    """What the user chose: which browser, and whether Step by step is on. Part 2 and Part 3 get this."""
+    return {"browser": browser, "step_by_step": bool(step_by_step),
+            "text": f"Browser: {browser}. Step by step: {'ON' if step_by_step else 'OFF'}."}
