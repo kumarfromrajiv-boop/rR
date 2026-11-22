@@ -1,5 +1,7 @@
 # Main file: serves the pages and connects all parts.
+import ipaddress
 import os
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
@@ -14,6 +16,21 @@ import part6_checker as part6
 from page import HTML
 
 app = FastAPI()
+
+
+def url_ok(url: str) -> bool:
+    """Only normal web addresses (http / https). No file:// and no addresses inside the server's own network."""
+    p = urlparse(url)
+    if p.scheme not in ("http", "https") or not p.hostname:
+        return False
+    host = p.hostname.lower()
+    if host == "localhost" or host.endswith(".local"):
+        return False
+    try:
+        ip = ipaddress.ip_address(host)
+        return not (ip.is_private or ip.is_loopback or ip.is_link_local)
+    except ValueError:
+        return True                               # a normal name like example.com
 
 
 async def get_json(request: Request) -> dict:
@@ -45,6 +62,8 @@ async def api_task(request: Request):
     browser = body.get("browser")
     if not url or not task or browser not in ("playwright", "firefox"):
         return JSONResponse({"error": "URL, task and browser are required."}, status_code=400)
+    if not url_ok(url):
+        return JSONResponse({"error": "Enter a full web address that starts with http:// or https://"}, status_code=400)
 
     sbs = bool(body.get("step_by_step"))                      # Step by step ticked?
     steps = (body.get("steps") or "").strip() if sbs else ""
