@@ -1,11 +1,9 @@
 # Main file: serves the pages and connects all parts.
 import os
-from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 import uvicorn
 
 load_dotenv()
@@ -13,8 +11,7 @@ load_dotenv()
 import part1_user as hub
 import part2_ai_router as part2
 import part6_checker as part6
-
-BASE_DIR = Path(__file__).parent
+from page import HTML
 
 app = FastAPI()
 
@@ -27,10 +24,17 @@ async def get_json(request: Request) -> dict:
     return body if isinstance(body, dict) else {}
 
 
+# The website (3 pages + the Message page) lives in page.py.
+@app.get("/", response_class=HTMLResponse)
+async def home():
+    return HTML
+
+
 # Part 6: is the chosen browser on the server, and is it Live or Busy?
 @app.get("/api/check")
 async def api_check(browser: str | None = None):
     return await part6.check(browser, hub.is_busy())
+
 
 # Start a task: URL + task + chosen browser + Step by step go to Part 1, which starts the flow.
 @app.post("/api/task")
@@ -59,3 +63,44 @@ async def api_task(request: Request):
     hub.start({"url": url, "task": task, "how": str(body.get("how") or ""), "steps": steps,
                "step_by_step": sbs, "choice": choice, "browser": browser}, part2.run)
     return {"ok": True}
+
+
+# The Message page: messages to send (one per line) + what kind of message the user waits for.
+@app.post("/api/message")
+async def api_message(request: Request):
+    body = await get_json(request)
+    plan = part6.message_plan(body.get("send"), body.get("notify"))   # Part 6 looks: is there anything to do?
+    if not plan["has_plan"]:
+        return JSONResponse({"error": "Write the messages to send, or what you want to be told about."}, status_code=400)
+    if not hub.set_plan(plan):
+        return JSONResponse({"error": "No task is running."}, status_code=409)
+    return {"ok": True}
+
+
+# A reply typed in the Chat page.
+@app.post("/api/reply")
+async def api_reply(request: Request):
+    body = await get_json(request)
+    hub.reply(str(body.get("text", "")))
+    return {"ok": True}
+
+
+# The Stop button.
+@app.post("/api/stop")
+async def api_stop():
+    hub.stop()
+    return {"ok": True}
+
+
+# Live messages for the Chat page.
+@app.get("/api/events")
+async def api_events(request: Request):
+    res = hub.attach(request)
+    if isinstance(res, StreamingResponse):        # your Part 1 already wraps it
+        return res
+    return StreamingResponse(res, media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "3000")))
