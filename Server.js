@@ -1,6 +1,7 @@
 # Main file: serves the pages and connects all parts.
 import ipaddress
 import os
+import socket
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
@@ -27,8 +28,13 @@ def url_ok(url: str) -> bool:
     if host == "localhost" or host.endswith(".local"):
         return False
     try:
-        ip = ipaddress.ip_address(host)
-        return not (ip.is_private or ip.is_loopback or ip.is_link_local)
+        raw = host
+        try:
+            raw = socket.inet_ntoa(socket.inet_aton(host))   # 127.1, 0x7f000001, 2130706433 -> 127.0.0.1
+        except OSError:
+            pass
+        ip = ipaddress.ip_address(raw)
+        return not (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_unspecified)
     except ValueError:
         return True                               # a normal name like example.com
 
