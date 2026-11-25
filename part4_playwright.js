@@ -34,4 +34,4 @@ async def open():
     except Exception:
         await pw.stop()
         raise
-    return Browser(pw, browser, page)
+    return Browser(pw, browser, pageg
