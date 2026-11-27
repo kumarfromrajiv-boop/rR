@@ -1,10 +1,9 @@
-"""Part 3: does the work on the website using the chosen browser (Part 4 Playwright or Part 5 Firefox)."""
+"""Part 3: does the work on the website using the chosen browser (Part 4: Playwright, Firefox on the server)."""
 import asyncio
 
 import part4_playwright
-import part5_firefox
 
-ADAPTERS = {"playwright": part4_playwright, "firefox": part5_firefox}
+ADAPTERS = {"playwright": part4_playwright}
 
 # JavaScript that runs inside the page: numbers clickable elements and returns a text snapshot.
 SNAPSHOT = r"""() => {
