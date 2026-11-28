@@ -1,4 +1,4 @@
-"""Part 4: Playwright code (Chromium on the server)."""
+"""Part 4: Playwright code (Firefox on the server, no APK needed)."""
 class Browser:
     def __init__(self, pw, browser, page):
         self.pw, self.browser, self.page = pw, browser, page
@@ -29,7 +29,7 @@ async def open():
     from playwright.async_api import async_playwright
     pw = await async_playwright().start()
     try:
-        browser = await pw.chromium.launch(headless=True, args=["--no-sandbox"])
+        browser = await pw.firefox.launch(headless=True)
         page = await browser.new_page()
     except Exception:
         await pw.stop()
